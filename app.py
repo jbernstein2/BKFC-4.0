@@ -1,120 +1,172 @@
 import streamlit as st
-from data_parser import load_match_data, get_available_matches, STATS
-from report_generator import generate_report
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
+from branding import COLORS
+from data_parser import (
+    load_match_data,
+    get_available_matches,
+    STATS,
+    _safe_numeric
+)
+from report_generator import generate_report
+from insights import generate_insights
+
+# ───────────────────────────────────────────────────────────────
+# STREAMLIT CONFIG
+# ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="BKFC Match Report",
     page_icon="⚽",
     layout="wide"
 )
 
+# ───────────────────────────────────────────────────────────────
+# CACHING
+# ───────────────────────────────────────────────────────────────
 @st.cache_data
 def load_match_data_cached(bkfc_file, opp_file, match_title):
     return load_match_data(bkfc_file, opp_file, match_title)
+
+@st.cache_data
+def load_bkfc_season_df(bkfc_file):
+    df = pd.read_excel(bkfc_file, header=None, engine="openpyxl")
+    data_rows = df.iloc[3:]
+    bkfc_team_rows = data_rows[data_rows.index % 2 == 1]
+    return bkfc_team_rows
+
+# ───────────────────────────────────────────────────────────────
+# BKFC BRAND CARD
+# ───────────────────────────────────────────────────────────────
+def bkfc_card(text, value, color="GOLD"):
+    hex_color = "#" + COLORS[color]
+    st.markdown(
+        f"""
+        <div style="
+            background-color:{hex_color};
+            padding:12px;
+            border-radius:8px;
+            color:#000;
+            font-weight:bold;
+            font-size:18px;
+            text-align:center;
+            margin-bottom:10px;">
+            {text}: {value}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# ───────────────────────────────────────────────────────────────
+# UI HEADER
+# ───────────────────────────────────────────────────────────────
 st.title("⚽ Brooklyn FC")
 st.subheader("Match Analysis & Report Generator")
 st.markdown("---")
 
-# ── SIDEBAR: FILES + OPPONENT PROFILE + REPORT CONTROLS ─────────────────────
+# ───────────────────────────────────────────────────────────────
+# SIDEBAR INPUTS
+# ───────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Data Inputs")
     bkfc_file = st.file_uploader("BKFC Wyscout Season (.xlsx)", type=["xlsx"])
     opp_file = st.file_uploader("Opponent Wyscout Season (.xlsx)", type=["xlsx"])
-
     st.markdown("---")
     st.header("Report Controls")
 
-# ── MAIN: ONLY CONTINUE WHEN BOTH FILES ARE PRESENT ─────────────────────────
+# ───────────────────────────────────────────────────────────────
+# MAIN LOGIC — ONLY RUN WHEN BOTH FILES ARE PRESENT
+# ───────────────────────────────────────────────────────────────
 if bkfc_file and opp_file:
-    # Get all matches from BKFC file
+
+    # Load match list
     matches = get_available_matches(bkfc_file)
     match_labels = [m["label"] for m in matches]
 
-    # Single-match selection
     selected_label = st.selectbox("Select Match", match_labels)
     match_title = next(m["match_title"] for m in matches if m["label"] == selected_label)
 
-    # Optional: second match for comparison
+    # Optional comparison match
     st.markdown("#### Optional: Compare with another match")
-    compare_label = st.selectbox(
-        "Select comparison match (optional)",
-        ["None"] + match_labels,
-        index=0
-    )
+    compare_label = st.selectbox("Select comparison match (optional)", ["None"] + match_labels)
     compare_title = None
     if compare_label != "None":
         compare_title = next(m["match_title"] for m in matches if m["label"] == compare_label)
 
-    # Load main match data (cached)
+    # Load match data
     data = load_match_data_cached(bkfc_file, opp_file, match_title)
 
     st.success(f"Loaded match: BKFC vs {data['opponent_name']} ({data['match_date']})")
 
-    # ── OPPONENT PROFILE IN SIDEBAR ──────────────────────────────────────────
+    # ───────────────────────────────────────────────────────────────
+    # SIDEBAR — OPPONENT PROFILE
+    # ───────────────────────────────────────────────────────────────
     with st.sidebar:
         st.header("Opponent Profile")
-        st.write(data["opponent_name"])
-        st.metric("PPDA (season avg)", f"{data['opp_season_avg'][108]:.2g}")
-        st.metric("Shots Against (season avg)", f"{data['opp_season_avg'][61]:.2g}")
-        st.metric("Touches in Box (season avg)", f"{data['opp_season_avg'][55]:.2g}")
+        bkfc_card("Opponent", data["opponent_name"], color="GOLD")
+        bkfc_card("PPDA (Season Avg)", f"{data['opp_season_avg'][108]:.2g}", color="SILVER")
+        bkfc_card("Shots Against (Season Avg)", f"{data['opp_season_avg'][61]:.2g}", color="DARK_GRAY")
+        bkfc_card("Touches in Box (Season Avg)", f"{data['opp_season_avg'][55]:.2g}", color="GREEN")
 
-    # ── MAIN DASHBOARD SECTIONS ──────────────────────────────────────────────
-
-    # 1) Match summary table
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 1 — MATCH SUMMARY TABLE
+    # ───────────────────────────────────────────────────────────────
     st.markdown("### Match Performance Overview")
+
     summary_metrics = [
-        ("Goals",           6),
+        ("Goals", 6),
         ("xG (Exp. Goals)", 7),
-        ("Shots",           8),
+        ("Shots", 8),
         ("Shots on Target", 9),
-        ("Possession %",    14),
+        ("Possession %", 14),
         ("Pass Accuracy %", 13),
-        ("PPDA",            108),
+        ("PPDA", 108),
     ]
 
     rows = []
     for label, col in summary_metrics:
-        bkfc_val = float(data["match_bkfc"][col])
-        opp_val  = float(data["match_opp"][col])
         rows.append({
             "Metric": label,
-            "BKFC": bkfc_val,
-            data["opponent_name"]: opp_val,
+            "BKFC": float(data["match_bkfc"][col]),
+            data["opponent_name"]: float(data["match_opp"][col]),
         })
     st.table(rows)
 
-    # 2) Head-to-head chart (reuse logic conceptually)
-    st.markdown("### Head-to-Head Comparison (Key Metrics)")
-    import matplotlib.pyplot as plt
-    import numpy as np
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 2 — HEAD-TO-HEAD CHART
+    # ───────────────────────────────────────────────────────────────
+    st.markdown("### Head-to-Head Comparison")
 
-    h2h_cols = [m[1] for m in summary_metrics]
-    labels   = [m[0] for m in summary_metrics]
-    bkfc_vals = np.array([float(data["match_bkfc"][c]) for c in h2h_cols])
-    opp_vals  = np.array([float(data["match_opp"][c]) for c in h2h_cols])
+    labels = [m[0] for m in summary_metrics]
+    bkfc_vals = np.array([float(data["match_bkfc"][m[1]]) for m in summary_metrics])
+    opp_vals  = np.array([float(data["match_opp"][m[1]]) for m in summary_metrics])
 
     fig, ax = plt.subplots(figsize=(8, 4))
     x = np.arange(len(labels))
     w = 0.35
-    ax.bar(x - w/2, bkfc_vals, w, label="BKFC")
-    ax.bar(x + w/2, opp_vals,  w, label=data["opponent_name"])
+
+    ax.bar(x - w/2, bkfc_vals, w, label="BKFC", color="#" + COLORS["GOLD"])
+    ax.bar(x + w/2, opp_vals,  w, label=data["opponent_name"], color="#" + COLORS["DARK_GRAY"])
+
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=30, ha="right")
+    ax.grid(True, linestyle="--", alpha=0.3, color="#" + COLORS["GRID"])
     ax.legend()
     st.pyplot(fig)
 
-    # 3) Strategic insights (same engine as PPTX)
-    from insights import generate_insights
-    from data_parser import STATS as ALL_STATS
-
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 3 — STRATEGIC INSIGHTS
+    # ───────────────────────────────────────────────────────────────
     st.markdown("### Strategic Insights")
+
     stats_list = [
         {
-            "label":  s["label"],
-            "match":  data["match_bkfc"][s["col"]],
+            "label": s["label"],
+            "match": data["match_bkfc"][s["col"]],
             "season": data["bkfc_season_avg"][s["col"]],
         }
-        for s in ALL_STATS
+        for s in STATS
     ]
     insights = generate_insights(stats_list)
 
@@ -122,11 +174,14 @@ if bkfc_file and opp_file:
         for text in insights:
             st.info(text)
 
-    # 4) Per-stat deep dive explorer
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 4 — PER-STAT DEEP DIVE
+    # ───────────────────────────────────────────────────────────────
     st.markdown("### Per-Metric Deep Dive")
-    stat_label = st.selectbox("Choose a metric", [s["label"] for s in ALL_STATS])
-    stat_def   = next(s for s in ALL_STATS if s["label"] == stat_label)
-    col_idx    = stat_def["col"]
+
+    stat_label = st.selectbox("Choose a metric", [s["label"] for s in STATS])
+    stat_def = next(s for s in STATS if s["label"] == stat_label)
+    col_idx = stat_def["col"]
 
     bkfc_match_val = float(data["match_bkfc"][col_idx])
     opp_match_val  = float(data["match_opp"][col_idx])
@@ -137,38 +192,65 @@ if bkfc_file and opp_file:
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("This Match")
-        st.metric("BKFC", f"{bkfc_match_val:.2g}")
-        st.metric(data["opponent_name"], f"{opp_match_val:.2g}")
+        bkfc_card("BKFC", f"{bkfc_match_val:.2g}", color="GOLD")
+        bkfc_card(data["opponent_name"], f"{opp_match_val:.2g}", color="DARK_GRAY")
+
     with c2:
         st.subheader("Season Context")
-        st.metric("BKFC Avg", f"{bkfc_season:.2g}")
-        st.metric("League Avg", f"{league_avg:.2g}")
-        st.metric(f"{data['opponent_name']} Avg", f"{opp_season:.2g}")
+        bkfc_card("BKFC Avg", f"{bkfc_season:.2g}", color="GOLD")
+        bkfc_card("League Avg", f"{league_avg:.2g}", color="SILVER")
+        bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2g}", color="DARK_GRAY")
 
-    # 5) Season trend charts (simple example for xG and PPDA)
-    st.markdown("### Season Trends (BKFC)")
-    import pandas as pd
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 5 — INTERACTIVE SEASON TRENDS
+    # ───────────────────────────────────────────────────────────────
+    st.markdown("### Season Trends (Interactive)")
 
-    # Build a small season dataframe from bkfc_team_rows via data_parser logic
-    # Here we reuse bkfc_file directly for a quick trend view
-    from data_parser import _safe_numeric  # or reimplement inline
+    TREND_STATS = {
+        "xG (Expected Goals)": 7,
+        "PPDA": 108,
+        "Shots": 8,
+        "Shots on Target": 9,
+        "Possession %": 14,
+        "Pass Accuracy %": 13,
+        "Touches in Penalty Area": 55,
+    }
 
-    df_bkfc = pd.read_excel(bkfc_file, header=None, engine="openpyxl")
-    data_rows = df_bkfc.iloc[3:]
-    bkfc_team_rows = data_rows[data_rows.index % 2 == 1]
-    trend_df = pd.DataFrame({
-        "Date": bkfc_team_rows[0].astype(str),
-        "MatchTitle": bkfc_team_rows[1].astype(str),
-        "xG": _safe_numeric(bkfc_team_rows[7]),
-        "PPDA": _safe_numeric(bkfc_team_rows[108]),
-    })
+    selected_trend_stats = st.multiselect(
+        "Choose metrics to visualize over the season",
+        list(TREND_STATS.keys()),
+        default=["xG (Expected Goals)", "PPDA"]
+    )
 
-    trend_df = trend_df.sort_values("Date")
-    st.line_chart(trend_df.set_index("Date")[["xG", "PPDA"]])
+    bkfc_season_df = load_bkfc_season_df(bkfc_file)
+    trend_df = pd.DataFrame({"Date": bkfc_season_df[0].astype(str)})
 
-    # 6) Optional multi-match comparison
+    for label in selected_trend_stats:
+        col = TREND_STATS[label]
+        trend_df[label] = _safe_numeric(bkfc_season_df[col])
+
+    trend_df = trend_df.sort_values("Date").set_index("Date")
+
+    fig2, ax2 = plt.subplots(figsize=(8, 4))
+    for label in selected_trend_stats:
+        ax2.plot(
+            trend_df.index,
+            trend_df[label],
+            label=label,
+            linewidth=2.5,
+            color="#" + COLORS["GOLD"]
+        )
+    ax2.grid(True, linestyle="--", alpha=0.3, color="#" + COLORS["GRID"])
+    ax2.tick_params(colors="#" + COLORS["BLACK"])
+    ax2.legend()
+    st.pyplot(fig2)
+
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 6 — MULTI-MATCH COMPARISON
+    # ───────────────────────────────────────────────────────────────
     if compare_title:
         st.markdown("### Match Comparison")
+
         data_cmp = load_match_data_cached(bkfc_file, opp_file, compare_title)
 
         comp_cols = [6, 7, 8, 14, 13, 108]
@@ -183,6 +265,9 @@ if bkfc_file and opp_file:
             })
         st.table(rows_cmp)
 
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 7 — POWERPOINT EXPORT
+    # ───────────────────────────────────────────────────────────────
     st.markdown("---")
     confirm = st.checkbox("Verify data profiles match and charts look correct")
 
@@ -201,5 +286,6 @@ if bkfc_file and opp_file:
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                 use_container_width=True
             )
+
 else:
     st.info("Upload both BKFC and opponent Wyscout season files to begin.")
