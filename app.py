@@ -201,51 +201,55 @@ if bkfc_file and opp_file:
         bkfc_card("League Avg", f"{league_avg:.2g}", color="SILVER")
         bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2g}", color="DARK_GRAY")
 
-    # ───────────────────────────────────────────────────────────────
-    # SECTION 5 — INTERACTIVE SEASON TRENDS (ALL METRICS, UNIQUE COLORS)
-    # ───────────────────────────────────────────────────────────────
-    st.markdown("### Season Trends (Interactive)")
+  # ───────────────────────────────────────────────────────────────
+# SECTION 5 — INTERACTIVE SEASON TRENDS (ALL METRICS, UNIQUE COLORS)
+# ───────────────────────────────────────────────────────────────
+st.markdown("### Season Trends (Interactive)")
 
-    # Build full trend stat dictionary from STATS
-    TREND_STATS = {s["label"]: s["col"] for s in STATS}
+# Build full trend stat dictionary from STATS
+TREND_STATS = {s["label"]: s["col"] for s in STATS}
 
-    selected_trend_stats = st.multiselect(
-        "Choose metrics to visualize over the season",
-        list(TREND_STATS.keys()),
-        default=["xG (Expected Goals)", "PPDA"]
+selected_trend_stats = st.multiselect(
+    "Choose metrics to visualize over the season",
+    list(TREND_STATS.keys()),
+    default=["xG (Expected Goals)", "PPDA"]
+)
+
+bkfc_season_df = load_bkfc_season_df(bkfc_file)
+trend_df = pd.DataFrame({"Date": bkfc_season_df[0].astype(str)})
+
+# Add selected metrics
+for label in selected_trend_stats:
+    col = TREND_STATS[label]
+    trend_df[label] = _safe_numeric(bkfc_season_df[col])
+
+trend_df = trend_df.sort_values("Date").set_index("Date")
+
+# Generate unique colors WITHOUT seaborn
+def generate_unique_colors(n):
+    cmap = plt.cm.get_cmap("tab20", n)  # 20 distinct colors
+    return [cmap(i) for i in range(n)]
+
+color_list = generate_unique_colors(len(selected_trend_stats))
+color_map = {label: color_list[i] for i, label in enumerate(selected_trend_stats)}
+
+# Plot with Matplotlib
+fig2, ax2 = plt.subplots(figsize=(8, 4))
+
+for label in selected_trend_stats:
+    ax2.plot(
+        trend_df.index,
+        trend_df[label],
+        label=label,
+        linewidth=2.5,
+        color=color_map[label]
     )
 
-    bkfc_season_df = load_bkfc_season_df(bkfc_file)
-    trend_df = pd.DataFrame({"Date": bkfc_season_df[0].astype(str)})
+ax2.grid(True, linestyle="--", alpha=0.3)
+ax2.tick_params(colors="#" + COLORS["BLACK"])
+ax2.legend()
+st.pyplot(fig2)
 
-    # Add selected metrics
-    for label in selected_trend_stats:
-        col = TREND_STATS[label]
-        trend_df[label] = _safe_numeric(bkfc_season_df[col])
-
-    trend_df = trend_df.sort_values("Date").set_index("Date")
-
-    # Assign unique colors (not BKFC branded)
-    import seaborn as sns
-    palette = sns.color_palette("husl", len(selected_trend_stats))
-    color_map = {label: palette[i] for i, label in enumerate(selected_trend_stats)}
-
-    # Plot with Matplotlib
-    fig2, ax2 = plt.subplots(figsize=(8, 4))
-
-    for label in selected_trend_stats:
-        ax2.plot(
-            trend_df.index,
-            trend_df[label],
-            label=label,
-            linewidth=2.5,
-            color=color_map[label]
-        )
-
-    ax2.grid(True, linestyle="--", alpha=0.3)
-    ax2.tick_params(colors="#" + COLORS["BLACK"])
-    ax2.legend()
-    st.pyplot(fig2)
 
     # ───────────────────────────────────────────────────────────────
     # SECTION 6 — MULTI-MATCH COMPARISON
