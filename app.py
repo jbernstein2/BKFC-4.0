@@ -201,7 +201,7 @@ if bkfc_file and opp_file:
         bkfc_card("League Avg", f"{league_avg:.2g}", color="SILVER")
         bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2g}", color="DARK_GRAY")
 
-    # ───────────────────────────────────────────────────────────────
+       # ───────────────────────────────────────────────────────────────
     # SECTION 5 — INTERACTIVE SEASON TRENDS (ALL METRICS, UNIQUE COLORS)
     # ───────────────────────────────────────────────────────────────
     st.markdown("### Season Trends (Interactive)")
@@ -224,8 +224,10 @@ if bkfc_file and opp_file:
     trend_df = trend_df.sort_values("Date").set_index("Date")
 
     # Generate unique colors WITHOUT seaborn
+    from matplotlib import cm
+    cmap = cm.get_cmap("tab20")  # always available
+
     def generate_unique_colors(n):
-        cmap = plt.cm.get_cmap("tab20")  # no second argument
         return [cmap(i % 20) for i in range(n)]
 
     color_list = generate_unique_colors(len(selected_trend_stats))
