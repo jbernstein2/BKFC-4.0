@@ -3,3 +3,12 @@ pandas
 openpyxl
 python-pptx
 matplotlib
+
+# NEW — required for PDF parsing
+pdfplumber
+
+# NEW — required for regex-heavy parsing (already in Python, but Streamlit Cloud needs explicit install)
+regex
+
+# NEW — recommended for future modules (passing networks, shot maps, etc.)
+numpy
