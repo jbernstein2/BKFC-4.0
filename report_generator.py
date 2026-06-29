@@ -605,7 +605,7 @@ def add_stat_slide(prs, data, label, col):
         safe_float(data["all_opp_avg"][col]),
         safe_float(data["opp_season_avg"][col]),
     ]
-    season_labels = ["BKFC Avg", "League Avg", f"{data['opponent_name']} Avg"]
+    season_labels = ["BKFC Avg", "Opp Avg", f"{data['opponent_name']} Avg"]
     season_colors = [COLORS["GOLD"], COLORS["SILVER"], COLORS["DARK_GRAY"]]
     buf2 = _bar_chart(season_vals, season_labels, season_colors,
                       "Historical Context")
