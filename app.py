@@ -157,4 +157,167 @@ with tabs[0]:
         x = np.arange(len(labels))
         w = 0.35
 
-        ax.bar(x - w/2, bkfc_vals, w, label
+        ax.bar(x - w/2, bkfc_vals, w, label="BKFC", color="#" + COLORS["GOLD"])
+        ax.bar(x + w/2, opp_vals,  w, label=data["opponent_name"], color="#" + COLORS["DARK_GRAY"])
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, rotation=30, ha="right")
+        ax.grid(True, linestyle="--", alpha=0.3, color="#" + COLORS["GRID"])
+        ax.legend()
+        st.pyplot(fig)
+
+        st.markdown("### Strategic Insights")
+
+        stats_list = [
+            {
+                "label": s["label"],
+                "match": data["match_bkfc"][s["col"]],
+                "season": data["bkfc_season_avg"][s["col"]],
+            }
+            for s in STATS
+        ]
+        insights = generate_insights(stats_list)
+
+        with st.expander("View key deviations vs season baseline"):
+            for text in insights:
+                st.info(text)
+
+        st.markdown("### Per-Metric Deep Dive")
+
+        stat_label = st.selectbox("Choose a metric", [s["label"] for s in STATS])
+        stat_def = next(s for s in STATS if s["label"] == stat_label)
+        col_idx = stat_def["col"]
+
+        bkfc_match_val = float(data["match_bkfc"][col_idx])
+        opp_match_val  = float(data["match_opp"][col_idx])
+        bkfc_season    = float(data["bkfc_season_avg"][col_idx])
+        league_avg     = float(data["all_opp_avg"][col_idx])
+        opp_season     = float(data["opp_season_avg"][col_idx])
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("This Match")
+            bkfc_card("BKFC", f"{bkfc_match_val:.2g}", color="GOLD")
+            bkfc_card(data["opponent_name"], f"{opp_match_val:.2g}", color="DARK_GRAY")
+
+        with c2:
+            st.subheader("Season Context")
+            bkfc_card("BKFC Avg", f"{bkfc_season:.2g}", color="GOLD")
+            bkfc_card("League Avg", f"{league_avg:.2g}", color="SILVER")
+            bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2g}", color="DARK_GRAY")
+
+        st.markdown("### Season Trends (Interactive)")
+
+        TREND_STATS = {s["label"]: s["col"] for s in STATS}
+
+        selected_trend_stats = st.multiselect(
+            "Choose metrics to visualize over the season",
+            list(TREND_STATS.keys()),
+            default=["xG (Expected Goals)", "PPDA"]
+        )
+
+        bkfc_season_df = load_bkfc_season_df(bkfc_file)
+
+        trend_df = pd.DataFrame({"Date": bkfc_season_df[0].astype(str)})
+
+        for label in selected_trend_stats:
+            col = TREND_STATS[label]
+            trend_df[label] = _safe_numeric(bkfc_season_df[col])
+
+        trend_df = trend_df.sort_values("Date").set_index("Date")
+        st.line_chart(trend_df)
+
+        if compare_title:
+            st.markdown("### Match Comparison")
+
+            data_cmp = load_match_data_cached(bkfc_file, opp_file, compare_title)
+
+            comp_cols = [6, 7, 8, 14, 13, 108]
+            comp_labels = ["Goals", "xG", "Shots", "Possession %", "Pass Acc %", "PPDA"]
+
+            rows_cmp = []
+            for label, col in zip(comp_labels, comp_cols):
+                rows_cmp.append({
+                    "Metric": label,
+                    "Match A (selected)": float(data["match_bkfc"][col]),
+                    "Match B (comparison)": float(data_cmp["match_bkfc"][col]),
+                })
+            st.table(rows_cmp)
+
+        st.markdown("---")
+        confirm = st.checkbox("Verify data profiles match and charts look correct")
+
+        if confirm:
+            if st.button("Compile Match Report (PowerPoint)", use_container_width=True):
+                with st.spinner("Generating PowerPoint report..."):
+                    report_stream = generate_report(data)
+                    clean_opp_name = data['opponent_name'].replace(" ", "_")
+                    output_filename = f"BKFC_vs_{clean_opp_name}_Match_Report.pptx"
+
+                st.success("Report ready!")
+                st.download_button(
+                    label="Download PowerPoint",
+                    data=report_stream,
+                    file_name=output_filename,
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True
+                )
+
+    else:
+        st.info("Upload both BKFC and opponent Wyscout season files to begin.")
+
+# ───────────────────────────────────────────────────────────────
+# TAB 2 — TEAM STATS (XLSX)
+# ───────────────────────────────────────────────────────────────
+with tabs[1]:
+    st.header("Team Stats (from XLSX)")
+    if not (bkfc_file and opp_file):
+        st.info("Upload both BKFC and opponent Wyscout season files to view team stats.")
+    else:
+        st.write("Team stats are shown in the Match Summary tab.")
+
+# ───────────────────────────────────────────────────────────────
+# TAB 3 — ADVANCED INSIGHTS (PDF)
+# ───────────────────────────────────────────────────────────────
+with tabs[2]:
+    st.header("Advanced Tactical Insights (from PDF)")
+
+    if pdf_data:
+
+        st.subheader("xG Timeline")
+
+        xg = pdf_data["xg_timeline"]
+
+        st.write("### Player xG Contribution")
+        st.bar_chart(pd.DataFrame.from_dict(
+            xg["player_xg"], orient="index", columns=["xG"]
+        ))
+
+        st.write("### First Half vs Second Half xG")
+        st.json(xg["half_split"])
+
+        st.write("### Defensive xCG Timeline")
+        st.line_chart(pd.DataFrame([
+            {"minute": s["minute"], "xCG": s["xCG_cumulative"]}
+            for s in xg["defensive_timeline"]
+        ]))
+
+        st.write("### Shots Against (xCG)")
+        st.dataframe(pd.DataFrame(xg["shots_against"]))
+
+        st.markdown("---")
+        st.info("More tactical modules coming soon: PPDA, Passing Network, Defensive Shot Map, Transition Map, Set Pieces, Duel Efficiency, etc.")
+
+    else:
+        st.info("Upload a Wyscout Match Report PDF to view tactical insights.")
+
+# ───────────────────────────────────────────────────────────────
+# TAB 4 — PLAYER DASHBOARDS (PDF)
+# ───────────────────────────────────────────────────────────────
+with tabs[3]:
+    st.header("Player Dashboards (from PDF)")
+
+    if pdf_data:
+        st.info("Player dashboards will be added after team tactical modules.")
+    else:
+        st.info("Upload a Wyscout Match Report PDF to view player dashboards.")
