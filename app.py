@@ -225,8 +225,8 @@ if bkfc_file and opp_file:
 
     # Generate unique colors WITHOUT seaborn
     def generate_unique_colors(n):
-        cmap = plt.cm.get_cmap("tab20", n)
-        return [cmap(i) for i in range(n)]
+        cmap = plt.cm.get_cmap("tab20")  # no second argument
+        return [cmap(i % 20) for i in range(n)]
 
     color_list = generate_unique_colors(len(selected_trend_stats))
     color_map = {label: color_list[i] for i, label in enumerate(selected_trend_stats)}
