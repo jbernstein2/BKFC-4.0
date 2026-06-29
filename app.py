@@ -23,13 +23,25 @@ with col2:
     st.markdown("### Opponent Data Inputs")
     opp_file = st.file_uploader("Upload Opponent Wyscout Season Database (.xlsx)", type=["xlsx"])
 
+# Once both files are uploaded, allow match selection
 if bkfc_file and opp_file:
     try:
+        # Load all available matches from BKFC file
+        matches = get_available_matches(bkfc_file)
+        match_labels = [m["label"] for m in matches]
+
+        selected_label = st.selectbox("Select Match", match_labels)
+
+        # Extract the raw match_title needed by load_match_data()
+        match_title = next(
+            m["match_title"] for m in matches if m["label"] == selected_label
+        )
+
         # Load and execute transformation mapping engine pipeline
-        data = load_match_data(bkfc_file, opp_file)
-        
+        data = load_match_data(bkfc_file, opp_file, match_title)
+
         st.success(f"Successfully Found Match Record: BKFC vs {data['opponent_name']}")
-        
+
         # Display contextual parameters validation card
         with st.container():
             st.markdown("#### Match Validation")
@@ -37,20 +49,18 @@ if bkfc_file and opp_file:
             meta1.metric("Competition Stage", data['competition'])
             meta2.metric("Recorded Match Date", data['match_date'])
             meta3.metric("Final Scoreline", data['score'])
-            
+
         st.markdown("---")
         confirm = st.checkbox("Verify data profiles match")
 
         if confirm:
             if st.button("Compile Match Report", use_container_width=True):
                 with st.spinner("Processing visualizations..."):
-                    # Process presentation array objects into bytes stream
                     report_stream = generate_report(data)
-                    
-                    # Create custom file name download output string matches
+
                     clean_opp_name = data['opponent_name'].replace(" ", "_")
                     output_filename = f"BKFC_vs_{clean_opp_name}_Match_Report.pptx"
-                    
+
                 st.balloons()
                 st.download_button(
                     label="Download PowerPoint",
@@ -59,5 +69,6 @@ if bkfc_file and opp_file:
                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                     use_container_width=True
                 )
+
     except Exception as e:
         st.error(f"Critical pipeline error encountered during execution loop processing: {str(e)}")
