@@ -1,5 +1,5 @@
 import streamlit as st
-from data_parser import load_match_data
+from data_parser import load_match_data, get_available_matches
 from report_generator import generate_report
 
 st.set_page_config(
