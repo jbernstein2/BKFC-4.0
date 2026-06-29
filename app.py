@@ -201,8 +201,8 @@ if bkfc_file and opp_file:
         bkfc_card("League Avg", f"{league_avg:.2g}", color="SILVER")
         bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2g}", color="DARK_GRAY")
 
-       # ───────────────────────────────────────────────────────────────
-    # SECTION 5 — INTERACTIVE SEASON TRENDS (ALL METRICS, UNIQUE COLORS)
+    # ───────────────────────────────────────────────────────────────
+    # SECTION 5 — INTERACTIVE SEASON TRENDS (ALL METRICS, AUTO COLORS)
     # ───────────────────────────────────────────────────────────────
     st.markdown("### Season Trends (Interactive)")
 
@@ -215,6 +215,7 @@ if bkfc_file and opp_file:
     )
 
     bkfc_season_df = load_bkfc_season_df(bkfc_file)
+
     trend_df = pd.DataFrame({"Date": bkfc_season_df[0].astype(str)})
 
     for label in selected_trend_stats:
@@ -223,31 +224,9 @@ if bkfc_file and opp_file:
 
     trend_df = trend_df.sort_values("Date").set_index("Date")
 
-    # Generate unique colors WITHOUT seaborn
-    from matplotlib import cm
-    cmap = cm.get_cmap("tab20")  # always available
+    # Streamlit automatically assigns unique colors
+    st.line_chart(trend_df)
 
-    def generate_unique_colors(n):
-        return [cmap(i % 20) for i in range(n)]
-
-    color_list = generate_unique_colors(len(selected_trend_stats))
-    color_map = {label: color_list[i] for i, label in enumerate(selected_trend_stats)}
-
-    fig2, ax2 = plt.subplots(figsize=(8, 4))
-
-    for label in selected_trend_stats:
-        ax2.plot(
-            trend_df.index,
-            trend_df[label],
-            label=label,
-            linewidth=2.5,
-            color=color_map[label]
-        )
-
-    ax2.grid(True, linestyle="--", alpha=0.3)
-    ax2.tick_params(colors="#" + COLORS["BLACK"])
-    ax2.legend()
-    st.pyplot(fig2)
 
     # ───────────────────────────────────────────────────────────────
     # SECTION 6 — MULTI-MATCH COMPARISON
