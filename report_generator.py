@@ -455,7 +455,7 @@ def add_attacking_slide(prs, data):
     b3 = ax2.bar(x - bar_w/2, season_vals, bar_w,
                  color="#" + COLORS["GOLD"], label="BKFC Avg", edgecolor="none")
     b4 = ax2.bar(x + bar_w/2, league_vals, bar_w,
-                 color="#" + COLORS["SILVER"], label="League Avg", edgecolor="none")
+                 color="#" + COLORS["SILVER"], label="Opp Avg", edgecolor="none")
     ax2.set_xticks(x)
     ax2.set_xticklabels(labels, fontsize=6.5, rotation=30, ha="right",
                         color="#" + COLORS["BLACK"])
@@ -550,7 +550,7 @@ def add_defensive_slide(prs, data):
                       data["opponent_name"],
                       "THIS MATCH — DEFENSIVE OUTPUT")
     buf2 = _def_chart(season_bkfc_v, season_avg_v,
-                      "League Avg",
+                      "Opp Avg",
                       "SEASON BASELINE — DEFENSIVE AVG")
 
     slide.shapes.add_picture(buf1, Inches(0.3), Inches(1.1), Inches(6.5), Inches(5.5))
