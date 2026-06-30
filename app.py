@@ -43,13 +43,17 @@ def load_bkfc_season_df(bkfc_file):
 # ───────────────────────────────────────────────────────────────
 def bkfc_card(text, value, color="GOLD"):
     hex_color = "#" + COLORS[color]
+
+    # Automatically switch text color for dark backgrounds
+    text_color = "#FFFFFF" if color == "DARK_GRAY" else "#000000"
+
     st.markdown(
         f"""
         <div style="
             background-color:{hex_color};
             padding:12px;
             border-radius:8px;
-            color:#000;
+            color:{text_color};
             font-weight:bold;
             font-size:18px;
             text-align:center;
