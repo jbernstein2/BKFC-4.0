@@ -40,6 +40,34 @@ def fmt_val(val):
     return f"{v:.2f}"
  
  
+def _annotate_pair(ax, bars_a, bars_b, fontsize=7, near_frac=0.08):
+    """
+    Label two grouped/paired bars per category. When the two bars in a pair
+    are close enough in height that their labels would collide, stagger the
+    first label higher so the text never overlaps.
+    """
+    ymin, ymax = ax.get_ylim()
+    y_range = (ymax - ymin) or 1
+    threshold = near_frac * y_range
+ 
+    for bar_a, bar_b in zip(bars_a, bars_b):
+        h_a = bar_a.get_height()
+        h_b = bar_b.get_height()
+        close = abs(h_a - h_b) < threshold
+        offset_a = 14 if close else 3
+        offset_b = 3
+        ax.annotate(fmt_val(h_a),
+                    xy=(bar_a.get_x() + bar_a.get_width() / 2, h_a),
+                    xytext=(0, offset_a), textcoords="offset points",
+                    ha="center", va="bottom", fontsize=fontsize, fontweight="bold",
+                    color="#" + COLORS["BLACK"])
+        ax.annotate(fmt_val(h_b),
+                    xy=(bar_b.get_x() + bar_b.get_width() / 2, h_b),
+                    xytext=(0, offset_b), textcoords="offset points",
+                    ha="center", va="bottom", fontsize=fontsize, fontweight="bold",
+                    color="#" + COLORS["BLACK"])
+ 
+ 
 # ── PRESENTATION SETUP ──────────────────────────────────────────────────────
 def create_prs():
     prs = Presentation()
@@ -426,13 +454,7 @@ def add_attacking_slide(prs, data):
     ax.set_axisbelow(True)
     ax.legend(fontsize=7.5, frameon=False)
  
-    for bar in list(b1) + list(b2):
-        h = bar.get_height()
-        ax.annotate(fmt_val(h),
-                    xy=(bar.get_x() + bar.get_width()/2, h),
-                    xytext=(0, 3), textcoords="offset points",
-                    ha="center", va="bottom", fontsize=7, fontweight="bold",
-                    color="#" + COLORS["BLACK"])
+    _annotate_pair(ax, b1, b2)
  
     plt.tight_layout()
     buf1 = io.BytesIO()
@@ -467,13 +489,7 @@ def add_attacking_slide(prs, data):
     ax2.set_axisbelow(True)
     ax2.legend(fontsize=7.5, frameon=False)
  
-    for bar in list(b3) + list(b4):
-        h = bar.get_height()
-        ax2.annotate(fmt_val(h),
-                     xy=(bar.get_x() + bar.get_width()/2, h),
-                     xytext=(0, 3), textcoords="offset points",
-                     ha="center", va="bottom", fontsize=7, fontweight="bold",
-                     color="#" + COLORS["BLACK"])
+    _annotate_pair(ax2, b3, b4)
  
     plt.tight_layout()
     buf2 = io.BytesIO()
@@ -531,13 +547,7 @@ def add_defensive_slide(prs, data):
                       color="#" + COLORS["GRID"], zorder=0)
         ax.set_axisbelow(True)
         ax.legend(fontsize=7.5, frameon=False)
-        for bar in list(b1) + list(b2):
-            h = bar.get_height()
-            ax.annotate(fmt_val(h),
-                        xy=(bar.get_x() + bar.get_width()/2, h),
-                        xytext=(0, 3), textcoords="offset points",
-                        ha="center", va="bottom", fontsize=7,
-                        fontweight="bold", color="#" + COLORS["BLACK"])
+        _annotate_pair(ax, b1, b2)
         plt.tight_layout()
         buf = io.BytesIO()
         plt.savefig(buf, format="png",
@@ -649,4 +659,3 @@ def generate_report(data) -> io.BytesIO:
     prs.save(buf)
     buf.seek(0)
     return buf
- 
