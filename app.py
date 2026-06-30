@@ -294,11 +294,6 @@ with tabs[2]:
         st.subheader(f"{meta['home_team']} {meta['home_score']} – {meta['away_score']} {meta['away_team']}")
         st.caption(f"{meta['competition']} • {meta['round']} • {meta['date']}")
 
-        # Insights
-        st.write("### Match Insights")
-        for tip in pdf_data["insights"]:
-            st.markdown(f"- {tip}")
-
         # Team Stats
         st.write("### Team Stats")
         st.dataframe(pdf_data["team_stats_df"], use_container_width=True)
