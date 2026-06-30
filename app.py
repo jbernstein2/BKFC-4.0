@@ -13,7 +13,7 @@ from data_parser import (
 from report_generator import generate_report
 from insights import generate_insights
 
-from pdf_parser import parse_pdf
+from pdf_scraper import WyscoutMatchReport, to_streamlit_ready
 
 # ───────────────────────────────────────────────────────────────
 # STREAMLIT CONFIG
@@ -86,7 +86,8 @@ with st.sidebar:
 # ───────────────────────────────────────────────────────────────
 pdf_data = None
 if pdf_file:
-    pdf_data = parse_pdf(pdf_file)
+    report = WyscoutMatchReport(pdf_file)
+    pdf_data = to_streamlit_ready(report)
 
 # ───────────────────────────────────────────────────────────────
 # TABS
@@ -288,32 +289,30 @@ with tabs[2]:
 
     if pdf_data:
 
-        st.subheader("xG Timeline")
+        # Metadata
+        meta = pdf_data["meta"]
+        st.subheader(f"{meta['home_team']} {meta['home_score']} – {meta['away_score']} {meta['away_team']}")
+        st.caption(f"{meta['competition']} • {meta['round']} • {meta['date']}")
 
-        xg = pdf_data["xg_timeline"]
+        # Insights
+        st.write("### Match Insights")
+        for tip in pdf_data["insights"]:
+            st.markdown(f"- {tip}")
 
-        st.write("### Player xG Contribution")
-        st.bar_chart(pd.DataFrame.from_dict(
-            xg["player_xg"], orient="index", columns=["xG"]
-        ))
+        # Team Stats
+        st.write("### Team Stats")
+        st.dataframe(pdf_data["team_stats_df"], use_container_width=True)
 
-        st.write("### First Half vs Second Half xG")
-        st.json(xg["half_split"])
-
-        st.write("### Defensive xCG Timeline")
-        st.line_chart(pd.DataFrame([
-            {"minute": s["minute"], "xCG": s["xCG_cumulative"]}
-            for s in xg["defensive_timeline"]
-        ]))
-
-        st.write("### Shots Against (xCG)")
-        st.dataframe(pd.DataFrame(xg["shots_against"]))
+        # Player Stats
+        st.write("### Player Stats")
+        st.dataframe(pdf_data["player_stats_df"], use_container_width=True)
 
         st.markdown("---")
-        st.info("More tactical modules coming soon: PPDA, Passing Network, Defensive Shot Map, Transition Map, Set Pieces, Duel Efficiency, etc.")
+        st.info("More tactical modules coming soon: xG timeline, PPDA timeline, Passing Network, Defensive Shot Map, Transition Map, Set Pieces, Duel Efficiency, etc.")
 
     else:
         st.info("Upload a Wyscout Match Report PDF to view tactical insights.")
+
 
 # ───────────────────────────────────────────────────────────────
 # TAB 4 — PLAYER DASHBOARDS (PDF)
