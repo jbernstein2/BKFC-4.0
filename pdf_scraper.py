@@ -117,85 +117,6 @@ class WyscoutMatchReport:
             rows.append({"metric": key, self._home_stats.team: home[key], self._away_stats.team: away[key]})
         return pd.DataFrame(rows)
 
-    def insights(self) -> list[str]:
-        """
-        Generate plain-English insight strings from parsed data.
-        Returns a list of bullet-ready sentences for display in Streamlit.
-        """
-        if not self._parsed:
-            self.parse()
-
-        tips = []
-        m  = self._meta
-        h  = self._home_stats
-        a  = self._away_stats
-        df = self.player_stats_df()
-
-        # --- Match result ---
-        tips.append(
-            f"**Result:** {m.home_team} {m.home_score}–{m.away_score} {m.away_team} "
-            f"({m.competition}, {m.round}, {m.date})"
-        )
-
-        # --- Goals ---
-        for g in m.goals:
-            tips.append(f"⚽ {g['minute']}' — {g['player']} ({g['team']})")
-
-        # --- xG vs actual ---
-        tips.append(
-            f"**xG:** {h.team} {h.xg:.2f} vs {a.team} {a.xg:.2f} — "
-            + ("Tampa Bay outperformed their xG." if a.xg > h.xg else "Brooklyn were the stronger team on chances.")
-        )
-
-        # --- Possession ---
-        tips.append(
-            f"**Possession:** {h.team} {h.possession_total:.0f}% / {a.team} {a.possession_total:.0f}% — "
-            f"{a.team} dominated in the first half ({a.possession_1h:.0f}%) "
-            f"but {h.team} took over in the second ({h.possession_2h:.0f}%)."
-        )
-
-        # --- Pass accuracy ---
-        pa_diff = a.pass_accuracy_total - h.pass_accuracy_total
-        tips.append(
-            f"**Pass accuracy:** {h.team} {h.pass_accuracy_total:.0f}% vs {a.team} {a.pass_accuracy_total:.0f}% — "
-            f"{a.team} were {pa_diff:.0f} percentage points more accurate in their passing."
-        )
-
-        # --- Shots ---
-        tips.append(
-            f"**Shots:** {h.team} {h.shots_total} total ({h.shots_on_target} on target) | "
-            f"{a.team} {a.shots_total} total ({a.shots_on_target} on target)"
-        )
-
-        # --- Pressing ---
-        if h.ppda and a.ppda:
-            better_presser = h.team if h.ppda < a.ppda else a.team
-            tips.append(
-                f"**Pressing (PPDA):** {h.team} {h.ppda} / {a.team} {a.ppda} — "
-                f"{better_presser} pressed more intensely overall (lower PPDA = higher intensity)."
-            )
-
-        # --- Duels ---
-        tips.append(
-            f"**Duels won:** {h.team} {h.duels_won_pct:.0f}% vs {a.team} {a.duels_won_pct:.0f}%."
-        )
-
-        # --- Top xG players ---
-        if not df.empty:
-            top_xg = df.nlargest(3, "xg")[["name", "team", "xg", "goals"]]
-            for _, row in top_xg.iterrows():
-                tips.append(
-                    f"🎯 {row['name']} ({row['team']}) — xG {row['xg']:.2f}, Goals: {int(row['goals'])}"
-                )
-
-        # --- Cards ---
-        if h.yellow_cards or a.yellow_cards:
-            tips.append(
-                f"**Discipline:** {h.team} {h.yellow_cards}🟨 {h.red_cards}🟥 | "
-                f"{a.team} {a.yellow_cards}🟨 {a.red_cards}🟥"
-            )
-
-        return tips
 
     # ── Private parsers ────────────────────────────────────────────────────
 
@@ -577,7 +498,6 @@ def to_streamlit_ready(report: WyscoutMatchReport) -> dict:
     data = report.parse()
     return {
         "meta":             data["meta"],
-        "insights":         report.insights(),
         "team_stats_df":    report.team_stats_df(),
         "player_stats_df":  report.player_stats_df(),
         "home_stats":       data["home_team_stats"],
