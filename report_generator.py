@@ -157,11 +157,6 @@ def _bar_chart(values, labels, colors, title, width=5.2, height=3.8, dpi=180):
                     fontsize=9.5, fontweight="bold",
                     color="#" + COLORS["BLACK"])
 
-    # Legend patch
-    bkfc_patch = mpatches.Patch(color="#" + COLORS["GOLD"], label="BKFC")
-    opp_patch  = mpatches.Patch(color="#" + COLORS["SILVER"], label="Opponent / Avg")
-    ax.legend(handles=[bkfc_patch, opp_patch], fontsize=7,
-              frameon=False, loc="upper right")
 
     plt.tight_layout()
     buf = io.BytesIO()
