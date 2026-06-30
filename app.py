@@ -13,7 +13,6 @@ from data_parser import (
 from report_generator import generate_report
 from insights import generate_insights
 
-# NEW — PDF parser
 from pdf_parser import parse_pdf
 
 # ───────────────────────────────────────────────────────────────
@@ -77,7 +76,6 @@ with st.sidebar:
     opp_file = st.file_uploader("Opponent Wyscout Season (.xlsx)", type=["xlsx"])
     pdf_file = st.file_uploader("Wyscout Match Report (.pdf)", type=["pdf"])
     st.markdown("---")
-    st.header("Report Controls")
 
 # ───────────────────────────────────────────────────────────────
 # LOAD PDF DATA (optional)
@@ -119,12 +117,13 @@ with tabs[0]:
 
         st.success(f"Loaded match: BKFC vs {data['opponent_name']} ({data['match_date']})")
 
+        # Opponent Profile stays — useful and will expand with PDF insights later
         with st.sidebar:
             st.header("Opponent Profile")
             bkfc_card("Opponent", data["opponent_name"], color="GOLD")
-            bkfc_card("PPDA (Season Avg)", f"{data['opp_season_avg'][108]:.2g}", color="SILVER")
-            bkfc_card("Shots Against (Season Avg)", f"{data['opp_season_avg'][61]:.2g}", color="DARK_GRAY")
-            bkfc_card("Touches in Box (Season Avg)", f"{data['opp_season_avg'][55]:.2g}", color="GREEN")
+            bkfc_card("PPDA (Season Avg)", f"{data['opp_season_avg'][108]:.2f}", color="SILVER")
+            bkfc_card("Shots Against (Season Avg)", f"{data['opp_season_avg'][61]:.2f}", color="DARK_GRAY")
+            bkfc_card("Touches in Box (Season Avg)", f"{data['opp_season_avg'][55]:.2f}", color="GREEN")
 
         st.markdown("### Match Performance Overview")
 
@@ -138,12 +137,13 @@ with tabs[0]:
             ("PPDA", 108),
         ]
 
+        # ⭐ FIXED ROUNDING HERE
         rows = []
         for label, col in summary_metrics:
             rows.append({
                 "Metric": label,
-                "BKFC": float(data["match_bkfc"][col]),
-                data["opponent_name"]: float(data["match_opp"][col]),
+                "BKFC": f"{float(data['match_bkfc'][col]):.2f}",
+                data["opponent_name"]: f"{float(data['match_opp'][col]):.2f}",
             })
         st.table(rows)
 
@@ -197,14 +197,14 @@ with tabs[0]:
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("This Match")
-            bkfc_card("BKFC", f"{bkfc_match_val:.2g}", color="GOLD")
-            bkfc_card(data["opponent_name"], f"{opp_match_val:.2g}", color="DARK_GRAY")
+            bkfc_card("BKFC", f"{bkfc_match_val:.2f}", color="GOLD")
+            bkfc_card(data["opponent_name"], f"{opp_match_val:.2f}", color="DARK_GRAY")
 
         with c2:
             st.subheader("Season Context")
-            bkfc_card("BKFC Avg", f"{bkfc_season:.2g}", color="GOLD")
-            bkfc_card("League Avg", f"{league_avg:.2g}", color="SILVER")
-            bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2g}", color="DARK_GRAY")
+            bkfc_card("BKFC Avg", f"{bkfc_season:.2f}", color="GOLD")
+            bkfc_card("League Avg", f"{league_avg:.2f}", color="SILVER")
+            bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2f}", color="DARK_GRAY")
 
         st.markdown("### Season Trends (Interactive)")
 
