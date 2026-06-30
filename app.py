@@ -207,7 +207,7 @@ with tabs[0]:
         with c2:
             st.subheader("Season Context")
             bkfc_card("BKFC Avg", f"{bkfc_season:.2f}", color="GOLD")
-            bkfc_card("League Avg", f"{league_avg:.2f}", color="SILVER")
+            bkfc_card("Opp Avg", f"{league_avg:.2f}", color="SILVER")
             bkfc_card(f"{data['opponent_name']} Avg", f"{opp_season:.2f}", color="DARK_GRAY")
 
         st.markdown("### Season Trends (Interactive)")
