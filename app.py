@@ -95,7 +95,7 @@ if pdf_file:
 tabs = st.tabs([
     "Match Summary (XLSX)",
     "Team Stats (XLSX)",
-    "Advanced Insights (PDF)",
+    "Wyscout Insights (PDF)",
     "Player Dashboards (PDF)"
 ])
 
@@ -285,7 +285,7 @@ with tabs[1]:
 # TAB 3 — ADVANCED INSIGHTS (PDF)
 # ───────────────────────────────────────────────────────────────
 with tabs[2]:
-    st.header("Advanced Tactical Insights (from PDF)")
+    st.header("Wyscout Insights (from PDF)")
 
     if pdf_data:
 
